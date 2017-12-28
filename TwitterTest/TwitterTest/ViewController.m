@@ -10,6 +10,8 @@
 #import "STTwitter.h"
 #import "WebViewVC.h"
 #import <Accounts/Accounts.h>
+#import <Social/Social.h>
+#import <Twitter/Twitter.h>
 
 @interface ViewController ()
 @property (nonatomic, strong) STTwitterAPI *twitter;
@@ -19,15 +21,152 @@
 
 @implementation ViewController
 
+- (void)downloadTwitterFeed:(NSString *)strTwitterToken
+{
+    NSURL *twitterURL = [NSURL URLWithString:[NSString stringWithFormat:@"https://api.twitter.com/1.1/statuses/user_timeline.json?include_entities=true&include_rts=true&screen_name=%@&count=20", @"rt_russian"]];
+    
+    NSMutableURLRequest *twitterRequest = [NSMutableURLRequest requestWithURL:twitterURL];
+    [twitterRequest setHTTPMethod:@"GET"];
+    
+    [twitterRequest addValue:[NSString stringWithFormat:@"Bearer %@", strTwitterToken] forHTTPHeaderField:@"Authorization"];
+    
+    NSLog(@"<NSURLRequest %@>", [[twitterRequest URL] absoluteString]);
+    NSLog(@"%@", [twitterRequest allHTTPHeaderFields]);
+
+    NSURLSession *urlSession = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+    
+    NSURLSessionDataTask *dataTask = [urlSession
+          dataTaskWithRequest:twitterRequest
+          completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+              
+              NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+              if (httpResponse.statusCode == 200){
+                  
+                  NSError *jsonError = nil;
+                  id json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&jsonError];
+
+                  
+                  self.statuses = json;
+                  [self.tableView reloadData];
+
+              }
+              
+          }];
+    
+    [dataTask resume];
+}
+
+- (NSString *)st_stringByAddingRFC3986PercentEscapesUsingEncoding:(NSStringEncoding)encoding {
+    
+    NSString *s = (__bridge_transfer NSString *)
+    (CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault,
+                                             (CFStringRef)self,
+                                             NULL,
+                                             CFSTR("!*'();:@&=+$,/?%#[]"),
+                                             kCFStringEncodingUTF8));
+    return s;
+}
+
+
+- (NSString *)base64EncodedBearerTokenCredentialsWithConsumerKey:(NSString *)consumerKey
+                                                  consumerSecret:(NSString *)consumerSecret {
+    
+    NSString *encodedConsumerToken = [consumerKey st_stringByAddingRFC3986PercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    
+    NSString *encodedConsumerSecret = [consumerSecret st_stringByAddingRFC3986PercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    
+    NSString *bearerTokenCredentials = [NSString stringWithFormat:@"%@:%@", encodedConsumerToken, encodedConsumerSecret];
+    
+    NSData *data = [bearerTokenCredentials dataUsingEncoding:NSUTF8StringEncoding];
+    return [data base64Encoding];
+}
+
+
 - (void)viewDidLoad {
     [super viewDidLoad];
+//-----------------------------------------------------------------------------------------------
+    NSURL *twitterURL = [NSURL URLWithString:@"https://api.twitter.com/oauth2/token"];
+    NSMutableURLRequest *twitterRequest = [NSMutableURLRequest requestWithURL:twitterURL];
+    [twitterRequest setHTTPMethod:@"POST"];
+    
+    
+    NSString *base64EncodedTokens1 =
+    [self base64EncodedBearerTokenCredentialsWithConsumerKey:@"tXELD586Hvg0bnDW3ysAHH1wd"
+                    consumerSecret:@"0ExKoMALDsaCzX21Hb2Jx4wh4OVAtrWoYMkBIwFHt9TCCYcXJy"];
+    
+    
+    NSString *base64EncodedTokens = @"dFhFTEQ1ODZIdmcwYm5EVzN5c0FISDF3ZDowRXhLb01BTERzYUN6WDIxSGIySng0d2g0T1ZBdHJXb1lNa0JJd0ZIdDlUQ0NZY1hKeQ==";
+    [twitterRequest addValue:[NSString stringWithFormat:@"Basic %@", base64EncodedTokens]
+          forHTTPHeaderField:@"Authorization"];
+    
+    
+    NSMutableString *contentTypeValue = [NSMutableString stringWithString:@"application/x-www-form-urlencoded"];
+    [twitterRequest addValue:contentTypeValue forHTTPHeaderField:@"Content-Type"];
+    
+    
+    
+    NSString *s = @"grant_type=client_credentials";
+    NSData *bodyData = [s dataUsingEncoding:4 allowLossyConversion:YES];
+    
+    [twitterRequest addValue:[NSString stringWithFormat:@"%u", (unsigned int)[bodyData length]] forHTTPHeaderField:@"Content-Length"];
+    
+    [twitterRequest setHTTPBody:bodyData];
+    twitterRequest.HTTPShouldHandleCookies = NO;
+//-----------------------------------------------------------------------------------------------
+    
+    NSLog(@"<NSURLRequest %@>", [[twitterRequest URL] absoluteString]);
+    NSLog(@"%@", [twitterRequest allHTTPHeaderFields]);
+    
+    NSURLSession *urlSession = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+    
+    NSURLSessionDataTask *dataTask = [urlSession
+          dataTaskWithRequest:twitterRequest
+          completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
+              
+              NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+              if (httpResponse.statusCode == 200){
+                  
+                  NSError *jsonError = nil;
+                  id json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&jsonError];
+                  
+                  NSString* strToken = [json valueForKey:@"access_token"];
+                  [self downloadTwitterFeed:strToken];
+              }
+              
+          }];
+    
+    [dataTask resume];
 
+    
+    
+    
+    
+    STTwitterAPI *twitter = [STTwitterAPI twitterAPIAppOnlyWithConsumerKey:@"tXELD586Hvg0bnDW3ysAHH1wd"
+                                consumerSecret:@"0ExKoMALDsaCzX21Hb2Jx4wh4OVAtrWoYMkBIwFHt9TCCYcXJy"];
+    
+    [twitter verifyCredentialsWithUserSuccessBlock:^(NSString *username, NSString *userID) {
+        [twitter getUserTimelineWithScreenName:@"rt_russian" successBlock:^(NSArray *statuses) {
+            
+                  self.statuses = statuses;
+                  [self.tableView reloadData];
+                  
+              } errorBlock:^(NSError *error) {
+                  
+                  NSLog(@"%@", error.debugDescription);
+                  
+        }];
+    }
+    errorBlock:^(NSError *error) {
+        NSLog(@"%@", error.debugDescription);
+    }];
+    
+    
     self.accountStore = [[ACAccountStore alloc] init];
     
     _consumerKeyTextField = @"PdLBPYUXlhQpt4AguShUIw";
     _consumerSecretTextField = @"drdhGuKSingTbsDLtYpob4m5b5dn1abf9XXYyZKQzk";
     
-    [self loginOnTheWebAction:nil];
+ //   [self loginOnTheWebAction:nil];
 }
 
 - (IBAction)loginOnTheWebAction:(id)sender {
@@ -80,16 +219,18 @@
 
 - (void)getTimelineAction {
     
-    [_twitter getHomeTimelineSinceID:nil count:20
-        successBlock:^(NSArray *statuses) {
-            
-            NSLog(@"statuses: %@", statuses);
-            
-            self.statuses = statuses;
-            
-            [self.tableView reloadData];
-            
-        } errorBlock:^(NSError *error) {}];
+//    [_twitter getHomeTimelineSinceID:nil count:20
+//        successBlock:^(NSArray *statuses) {
+//            
+//            NSLog(@"statuses: %@", statuses);
+//            
+//            self.statuses = statuses;
+//            
+//            [self.tableView reloadData];
+//            
+//        } errorBlock:^(NSError *error) {}];
+//    
+    
 }
 
 - (void)didReceiveMemoryWarning {

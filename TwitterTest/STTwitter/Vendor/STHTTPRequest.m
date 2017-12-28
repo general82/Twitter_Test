@@ -439,7 +439,7 @@ static STHTTPRequestCookiesStorage globalCookiesStoragePolicy = STHTTPRequestCoo
     
     // sort POST parameters in order to get deterministic, unit testable requests
     NSArray *sortedPOSTDictionaries = [[self class] dictionariesSortedByKey:_POSTDictionary];
-    
+
     NSData *bodyData = nil;
     
     if([self.filesToUpload count] > 0 || [self.dataToUpload count] > 0) {
@@ -555,7 +555,9 @@ static STHTTPRequestCookiesStorage globalCookiesStoragePolicy = STHTTPRequestCoo
         [request addValue:authValue forHTTPHeaderField:@"Authorization"];
     }
     
-    request.HTTPShouldHandleCookies = ([self cookieStoragePolicy] == STHTTPRequestCookiesStorageShared);
+    BOOL ssdfg = ([self cookieStoragePolicy] == STHTTPRequestCookiesStorageShared);
+    request.HTTPShouldHandleCookies = ([self cookieStoragePolicy] ==
+                                       STHTTPRequestCookiesStorageShared);
     
     return request;
 }
@@ -797,6 +799,9 @@ static STHTTPRequestCookiesStorage globalCookiesStoragePolicy = STHTTPRequestCoo
     NSAssert(self.errorBlock, @"the error block is mandatory");
     
     NSURLRequest *request = [self prepareURLRequest];
+    
+    NSLog(@"<NSURLRequest %@>", [[request URL] absoluteString]);
+    NSLog(@"%@", [request allHTTPHeaderFields]);
     
     NSURLSessionConfiguration *sessionConfiguration = nil;
     
@@ -1173,11 +1178,12 @@ didReceiveResponse:(NSURLResponse *)response
 @implementation NSString (RFC3986)
 - (NSString *)st_stringByAddingRFC3986PercentEscapesUsingEncoding:(NSStringEncoding)encoding {
     
-    NSString *s = (__bridge_transfer NSString *)(CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault,
-                                                                                         (CFStringRef)self,
-                                                                                         NULL,
-                                                                                         CFSTR("!*'();:@&=+$,/?%#[]"),
-                                                                                         kCFStringEncodingUTF8));
+    NSString *s = (__bridge_transfer NSString *)
+                        (CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault,
+                                        (CFStringRef)self,
+                                            NULL,
+                                            CFSTR("!*'();:@&=+$,/?%#[]"),
+                                            kCFStringEncodingUTF8));
     return s;
 }
 @end
