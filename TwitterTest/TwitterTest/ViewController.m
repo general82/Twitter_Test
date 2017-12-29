@@ -70,15 +70,19 @@ NSString *consumerSecretText = @"0ExKoMALDsaCzX21Hb2Jx4wh4OVAtrWoYMkBIwFHt9TCCYc
           dataTaskWithRequest:twitterRequest
           completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
               
-              NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-              if (httpResponse.statusCode == 200){
+              dispatch_async(dispatch_get_main_queue(), ^(){
+
+                  NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+                  if (httpResponse.statusCode == 200){
+                      
+                      NSError *jsonError = nil;
+                      id json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&jsonError];
+                      
+                       strToken = [json valueForKey:@"access_token"];
+                      [self downloadTwitterFeed:strToken nameAccount:_nameTwitter.text];
+                  }
                   
-                  NSError *jsonError = nil;
-                  id json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&jsonError];
-                  
-                   strToken = [json valueForKey:@"access_token"];
-                  [self downloadTwitterFeed:strToken nameAccount:_nameTwitter.text];
-              }
+              });
           }];
     
     [dataTask resume];
@@ -101,19 +105,20 @@ NSString *consumerSecretText = @"0ExKoMALDsaCzX21Hb2Jx4wh4OVAtrWoYMkBIwFHt9TCCYc
       dataTaskWithRequest:twitterRequest
       completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
           
-          _nameTwitter.userInteractionEnabled = YES;
+          dispatch_async(dispatch_get_main_queue(), ^(){
 
-          NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-          if (httpResponse.statusCode == 200){
-              
-              dispatch_async(dispatch_get_main_queue(), ^(){
-                  NSError *jsonError = nil;
-                  id json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&jsonError];
+              _nameTwitter.userInteractionEnabled = YES;
+
+              NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
+              if (httpResponse.statusCode == 200){
                   
-                  self.statuses = json;
-                  [self.tableView reloadData];
-              });
-          }
+                      NSError *jsonError = nil;
+                      id json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&jsonError];
+                      
+                      self.statuses = json;
+                      [self.tableView reloadData];
+              }
+          });
       }];
     
     [dataTask resume];
