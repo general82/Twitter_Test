@@ -106,11 +106,13 @@ NSString *consumerSecretText = @"0ExKoMALDsaCzX21Hb2Jx4wh4OVAtrWoYMkBIwFHt9TCCYc
           NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
           if (httpResponse.statusCode == 200){
               
-              NSError *jsonError = nil;
-              id json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&jsonError];
-              
-              self.statuses = json;
-              [self.tableView reloadData];
+              dispatch_async(dispatch_get_main_queue(), ^(){
+                  NSError *jsonError = nil;
+                  id json = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&jsonError];
+                  
+                  self.statuses = json;
+                  [self.tableView reloadData];
+              });
           }
       }];
     
